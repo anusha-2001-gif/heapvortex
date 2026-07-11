@@ -1,12 +1,7 @@
-import './App.css';
+import Scene from "./components/Scene";
 
 function App() {
-  return (
-    <div>
-      <h1>HeapVortex</h1>
-      <h2>3D JVM Memory Leak Profiler</h2>
-    </div>
-  );
+  return <Scene />;
 }
 
 export default App;
