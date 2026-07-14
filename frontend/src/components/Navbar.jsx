@@ -1,5 +1,10 @@
 function Navbar() {
-  return <h2>Navbar</h2>;
+  return (
+    <nav className="navbar">
+      <h2>HeapVortex</h2>
+      <p>3D JVM Memory Leak Profiler</p>
+    </nav>
+  );
 }
 
 export default Navbar;
