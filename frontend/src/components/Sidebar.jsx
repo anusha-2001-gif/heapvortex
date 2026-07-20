@@ -1,79 +1,110 @@
 import { useEffect, useState } from "react";
-import api from "../services/api";
+import SockJS from "sockjs-client";
+import { Client } from "@stomp/stompjs";
 
 function Sidebar() {
-  const [heap, setHeap] = useState(null);
-  const [thread, setThread] = useState(null);
-  const [gc, setGc] = useState([]);
+
+  const [heap, setHeap] = useState("Loading...");
+  const [threads, setThreads] = useState("Loading...");
+  const [gc, setGc] = useState("Loading...");
+  const [cpu] = useState("Available Soon");
 
   useEffect(() => {
-    // Heap Info
-    api
-      .get("/heap")
-      .then((response) => {
-        setHeap(response.data);
-      })
-      .catch((error) => {
-        console.error("Heap API Error:", error);
+
+    // -------------------------
+    // Load initial data using REST APIs
+    // -------------------------
+
+    fetch("http://localhost:8080/api/heap")
+      .then(res => res.json())
+      .then(data => {
+        setHeap(`${data.used} MB / ${data.max} MB`);
       });
 
-    // Thread Info
-    api
-      .get("/threads")
-      .then((response) => {
-        setThread(response.data);
-      })
-      .catch((error) => {
-        console.error("Thread API Error:", error);
+    fetch("http://localhost:8080/api/threads")
+      .then(res => res.json())
+      .then(data => {
+        setThreads(data.threadCount);
       });
 
-    // Garbage Collector Info
-    api
-      .get("/gc")
-      .then((response) => {
-        setGc(response.data);
-      })
-      .catch((error) => {
-        console.error("GC API Error:", error);
+    fetch("http://localhost:8080/api/gc")
+      .then(res => res.json())
+      .then(data => {
+        setGc(data.length);
       });
+
+    // -------------------------
+    // Connect to WebSocket
+    // -------------------------
+
+    const socket = new SockJS("http://localhost:8080/ws");
+
+    const client = new Client({
+
+      webSocketFactory: () => socket,
+
+      reconnectDelay: 5000,
+
+      onConnect: () => {
+
+        console.log("✅ WebSocket Connected");
+
+        client.subscribe("/topic/metrics", (message) => {
+
+          const data = JSON.parse(message.body);
+
+          setHeap(`${data.heap.used} MB / ${data.heap.max} MB`);
+
+          setThreads(data.threads.threadCount);
+
+          setGc(data.gc.length);
+
+        });
+
+      },
+
+      onStompError: (frame) => {
+        console.error("STOMP Error:", frame);
+      }
+
+    });
+
+    client.activate();
+
+    return () => {
+      client.deactivate();
+    };
+
   }, []);
 
   return (
+
     <div className="sidebar">
+
       <h3>System Metrics</h3>
 
       <div className="metric">
         <strong>Heap Usage</strong>
-        <p>
-          {heap
-            ? `${heap.used} MB / ${heap.max} MB`
-            : "Loading..."}
-        </p>
+        <p>{heap}</p>
       </div>
 
       <div className="metric">
         <strong>Thread Count</strong>
-        <p>
-          {thread
-            ? thread.threadCount
-            : "Loading..."}
-        </p>
+        <p>{threads}</p>
       </div>
 
       <div className="metric">
         <strong>GC Events</strong>
-        <p>
-          {gc.length > 0
-            ? gc[0].collectionCount
-            : "Loading..."}
-        </p>
+        <p>{gc}</p>
       </div>
 
       <div className="metric">
         <strong>CPU Usage</strong>
-        <p>Coming Soon</p>
+        <p>{cpu}</p>
       </div>
+
     </div>
+
   );
 }
 
