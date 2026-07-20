@@ -1,7 +1,7 @@
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Line } from '@react-three/drei';
-import { useRef } from 'react';
-import graphData from '../data/mockGraph';
+import { Canvas, useFrame } from "@react-three/fiber";
+import { OrbitControls, Line } from "@react-three/drei";
+import { useRef, useState, useEffect } from "react";
+import api from "../services/api";
 
 // Rotating cube (your existing work)
 function Cube() {
@@ -22,72 +22,75 @@ function Cube() {
   );
 }
 
-// Render graph nodes
-function GraphNodes() {
+function GraphNodes({ graphData }) {
+
+  if (!graphData || !graphData.classDetails) {
+    return null;
+  }
+
   return (
     <>
-      {graphData.nodes.map((node) => (
+      {graphData.classDetails.slice(0, 10).map((node, index) => (
         <mesh
-          key={node.id}
-          position={[node.x, node.y, node.z]}
+          key={node.classId}
+          position={[
+            index * 1.2 - 5,
+            2,
+            0
+          ]}
         >
-          <sphereGeometry args={[0.25, 32, 32]} />
-          <meshStandardMaterial color='cyan' />
+          <sphereGeometry args={[0.35, 32, 32]} />
+          <meshStandardMaterial color="red" />
         </mesh>
       ))}
     </>
   );
 }
-
-// Render graph edges
+// Render graph edges (disabled for now)
 function GraphEdges() {
-  return (
-    <>
-      {graphData.edges.map((edge, index) => {
-        const fromNode = graphData.nodes.find((n) => n.id === edge.from);
-        const toNode = graphData.nodes.find((n) => n.id === edge.to);
-
-        return (
-          <Line
-            key={index}
-            points={[
-              [fromNode.x, fromNode.y, fromNode.z],
-              [toNode.x, toNode.y, toNode.z],
-            ]}
-            color='white'
-            lineWidth={2}
-          />
-        );
-      })}
-    </>
-  );
+  return null;
 }
 
 export default function Scene() {
+
+  const [graphData, setGraphData] = useState(null);
+
+  useEffect(() => {
+    api.get("/parser/parse")
+      .then((response) => {
+        setGraphData(response.data);
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  }, []);
+
   return (
     <Canvas
-      camera={{
-        position: [0, 0, 8],
-        fov: 50,
-      }}
-      style={{
-        width: '100%',
-        height: '100%',
-        background: '#20232a',
-      }}
-    >
-      {/* Lights */}
-      <ambientLight intensity={0.8} />
-      <directionalLight position={[5, 5, 5]} intensity={1.5} />
-      <directionalLight position={[-5, -5, -5]} intensity={0.5} />
+  camera={{
+    position: [0, 0, 8],
+    fov: 50,
+  }}
+  style={{
+    width: "100%",
+    height: "100%",
+    background: "#20232a",
+  }}
+>
+  {/* Lights */}
+  <ambientLight intensity={0.8} />
+  <directionalLight position={[5, 5, 5]} intensity={1.5} />
+  <directionalLight position={[-5, -5, -5]} intensity={0.5} />
 
-      {/* 3D Objects */}
-      <Cube />
-      <GraphNodes />
-      <GraphEdges />
+  {/* 3D Objects */}
+  <Cube />
+  <GraphNodes graphData={graphData} />
 
-      {/* Camera Controls */}
-      <OrbitControls />
-    </Canvas>
-  );
+  {/* GraphEdges will be added later */}
+  {/* <GraphEdges /> */}
+
+  {/* Camera Controls */}
+  <OrbitControls />
+</Canvas>
+);
 }

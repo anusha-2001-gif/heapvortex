@@ -9,7 +9,7 @@ function Sidebar() {
   useEffect(() => {
     // Heap Info
     api
-      .get("/api/heap")
+      .get("/heap")
       .then((response) => {
         setHeap(response.data);
       })
@@ -19,7 +19,7 @@ function Sidebar() {
 
     // Thread Info
     api
-      .get("/api/threads")
+      .get("/threads")
       .then((response) => {
         setThread(response.data);
       })
@@ -29,7 +29,7 @@ function Sidebar() {
 
     // Garbage Collector Info
     api
-      .get("/api/gc")
+      .get("/gc")
       .then((response) => {
         setGc(response.data);
       })
