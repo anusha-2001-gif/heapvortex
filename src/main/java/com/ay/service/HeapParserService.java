@@ -15,9 +15,28 @@ public class HeapParserService {
 
         Map<String, Object> result = new HashMap<>();
 
+        // Validate heap dump file
+        if (heapDumpFile == null) {
+            result.put("status", "error");
+            result.put("message", "Heap dump file is null!");
+            return result;
+        }
+
         if (!heapDumpFile.exists()) {
             result.put("status", "error");
             result.put("message", "Heap dump file not found!");
+            return result;
+        }
+
+        if (!heapDumpFile.isFile()) {
+            result.put("status", "error");
+            result.put("message", "The specified path is not a valid file.");
+            return result;
+        }
+
+        if (!heapDumpFile.canRead()) {
+            result.put("status", "error");
+            result.put("message", "Heap dump file cannot be read.");
             return result;
         }
 
@@ -62,7 +81,8 @@ public class HeapParserService {
         } catch (IOException e) {
 
             result.put("status", "error");
-            result.put("message", e.getMessage());
+            result.put("message", "Failed to parse heap dump.");
+            result.put("error", e.getMessage());
 
         }
 
