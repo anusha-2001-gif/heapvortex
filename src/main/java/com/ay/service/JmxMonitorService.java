@@ -5,9 +5,18 @@ import org.springframework.stereotype.Service;
 import java.lang.management.*;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+
 
 @Service
 public class JmxMonitorService {
+	
+	private final SimpMessagingTemplate messagingTemplate;
+
+    public JmxMonitorService(SimpMessagingTemplate messagingTemplate) {
+        this.messagingTemplate = messagingTemplate;
+    }
 
     public MemoryInfo getHeapInfo() {
         MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
@@ -22,6 +31,16 @@ public class JmxMonitorService {
         return info;
     }
 
+    @Scheduled(fixedRate = 2000)
+    public void streamLiveMetrics() {
+        MemoryInfo heapInfo = getHeapInfo();
+        ThreadStatsInfo threadInfo = getThreadInfo();
+        List<GcInfo> gcInfo = getGcInfo();
+
+        JvmMetricsDTO metrics = new JvmMetricsDTO(heapInfo, threadInfo, gcInfo, System.currentTimeMillis());
+
+        messagingTemplate.convertAndSend("/topic/jvm-metrics", metrics);
+    }
     public ThreadStatsInfo getThreadInfo() {
         ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
 
