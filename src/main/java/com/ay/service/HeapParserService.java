@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -52,7 +53,9 @@ public class HeapParserService {
             // Heap dump metadata
             result.put("fileName", heapDumpFile.getName());
             result.put("fileSize", heapDumpFile.length());
+            result.put("parsedAt", LocalDateTime.now().toString());
 
+            // Heap statistics
             result.put("classes", handler.getClassCount());
             result.put("instances", handler.getInstanceCount());
 
