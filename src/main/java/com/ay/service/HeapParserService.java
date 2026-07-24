@@ -48,6 +48,11 @@ public class HeapParserService {
             parser.parse(heapDumpFile);
 
             result.put("status", "success");
+
+            // Heap dump metadata
+            result.put("fileName", heapDumpFile.getName());
+            result.put("fileSize", heapDumpFile.length());
+
             result.put("classes", handler.getClassCount());
             result.put("instances", handler.getInstanceCount());
 
