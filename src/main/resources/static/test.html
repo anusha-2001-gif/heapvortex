@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JVM Metrics Live Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+    <h2>JVM Metrics - Live Test</h2>
+    <pre id="output" style="background:#f0f0f0; padding:10px;">Connecting...</pre>
+
+    <script>
+        const socket = new SockJS('/ws');
+        const stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+            document.getElementById('output').innerText = 'Connected! Waiting for data...';
+
+            stompClient.subscribe('/topic/jvm-metrics', function (message) {
+                const data = JSON.parse(message.body);
+                document.getElementById('output').innerText = JSON.stringify(data, null, 2);
+                console.log(data);
+            });
+        }, function (error) {
+            document.getElementById('output').innerText = 'Connection error: ' + error;
+        });
+    </script>
+</body>
+</html>
