@@ -22,6 +22,8 @@ public class HeapAnalysisHandler extends NullRecordHandler {
 
     // GC Roots
     private List<Long> gcRoots = new ArrayList<>();
+    private long analysisStartTime;
+    private long analysisEndTime;
 
     @Override
     public void classDump(long classObjId,
@@ -114,6 +116,22 @@ public class HeapAnalysisHandler extends NullRecordHandler {
         recordRoot(objId);
     }
 
+    
+    public void startAnalysis() {
+        analysisStartTime = System.currentTimeMillis();
+    }
+
+    public void endAnalysis() {
+        analysisEndTime = System.currentTimeMillis();
+    }
+
+    public long getAnalysisTime() {
+        return analysisEndTime - analysisStartTime;
+    }
+
+    public int getTotalObjectsProcessed() {
+        return classCount + instanceCount;
+    }
     // -------------------------
     // Getters
     // -------------------------

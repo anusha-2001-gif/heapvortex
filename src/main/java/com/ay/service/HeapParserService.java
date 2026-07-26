@@ -46,7 +46,11 @@ public class HeapParserService {
 
         try {
 
-            parser.parse(heapDumpFile);
+        	handler.startAnalysis();
+
+        	parser.parse(heapDumpFile);
+
+        	handler.endAnalysis();
 
             result.put("status", "success");
 
@@ -54,6 +58,10 @@ public class HeapParserService {
             result.put("fileName", heapDumpFile.getName());
             result.put("fileSize", heapDumpFile.length());
             result.put("parsedAt", LocalDateTime.now().toString());
+            
+            result.put("analysisTimeMs", handler.getAnalysisTime());
+            result.put("analysisCompleted", true);
+            result.put("totalObjectsProcessed", handler.getTotalObjectsProcessed());
 
             // Heap statistics
             result.put("classes", handler.getClassCount());
