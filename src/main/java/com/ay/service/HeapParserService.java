@@ -62,6 +62,15 @@ public class HeapParserService {
             result.put("analysisTimeMs", handler.getAnalysisTime());
             result.put("analysisCompleted", true);
             result.put("totalObjectsProcessed", handler.getTotalObjectsProcessed());
+            Map<String, Object> summary = new HashMap<>();
+
+            summary.put("totalClasses", handler.getClassCount());
+            summary.put("totalInstances", handler.getInstanceCount());
+            summary.put("totalGcRoots", handler.getGcRootCount());
+            summary.put("totalObjectsProcessed", handler.getTotalObjectsProcessed());
+            summary.put("analysisTimeMs", handler.getAnalysisTime());
+
+            result.put("summary", summary);
 
             // Heap statistics
             result.put("classes", handler.getClassCount());
