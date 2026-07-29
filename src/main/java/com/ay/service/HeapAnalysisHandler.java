@@ -23,6 +23,13 @@ public class HeapAnalysisHandler extends NullRecordHandler {
     // GC Roots
     private List<Long> gcRoots = new ArrayList<>();
 
+    // Edges: object reference relationships (source -> target)
+    private List<Map<String, Object>> edges = new ArrayList<>();
+
+    // Track instance-field definitions per class, needed to know which
+    // fields in an instance are object references vs primitive values.
+    private Map<Long, InstanceField[]> classFieldTypes = new HashMap<>();
+
     @Override
     public void classDump(long classObjId,
                           int stackTraceSerialNum,
@@ -48,6 +55,9 @@ public class HeapAnalysisHandler extends NullRecordHandler {
         classInfo.put("classLoaderId", classLoaderObjId);
 
         classDetails.add(classInfo);
+
+        // Remember field layout of this class for later edge extraction
+        classFieldTypes.put(classObjId, instanceFields);
     }
 
     @Override
@@ -57,6 +67,26 @@ public class HeapAnalysisHandler extends NullRecordHandler {
                              Value<?>[] instanceFieldValues) {
 
         instanceCount++;
+
+        InstanceField[] fields = classFieldTypes.get(classObjId);
+
+        if (fields != null) {
+            int limit = Math.min(instanceFieldValues.length, fields.length);
+            for (int i = 0; i < limit; i++) {
+                Object val = instanceFieldValues[i].value;
+
+                // Object-reference fields are stored as Long object IDs.
+                if (val instanceof Long) {
+                    long referencedId = (Long) val;
+                    if (referencedId != 0) {
+                        Map<String, Object> edge = new HashMap<>();
+                        edge.put("source", objId);
+                        edge.put("target", referencedId);
+                        edges.add(edge);
+                    }
+                }
+            }
+        }
     }
 
     // -------------------------
@@ -140,5 +170,9 @@ public class HeapAnalysisHandler extends NullRecordHandler {
 
     public int getGcRootCount() {
         return gcRoots.size();
+    }
+
+    public List<Map<String, Object>> getEdges() {
+        return edges;
     }
 }

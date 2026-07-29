@@ -59,6 +59,15 @@ public class HeapParserService {
                     )
             );
 
+            // Object reference edges (source -> target), needed for graph visualization
+            result.put(
+                    "edges",
+                    handler.getEdges().subList(
+                            0,
+                            Math.min(50, handler.getEdges().size())
+                    )
+            );
+
         } catch (IOException e) {
 
             result.put("status", "error");
