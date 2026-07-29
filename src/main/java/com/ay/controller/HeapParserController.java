@@ -1,13 +1,16 @@
 package com.ay.controller;
 
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.ay.service.HeapParserService;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.File;
-import java.util.Map;
+import com.ay.service.HeapParserService;
 
 @RestController
 @CrossOrigin(origins = "http://localhost:3000")
@@ -24,6 +27,14 @@ public class HeapParserController {
     public Map<String, Object> parseHeapDump() {
 
         File heapDumpFile = new File("heapdumps/heapdump_20260720_105215.hprof");
+
+        if (!heapDumpFile.exists()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("status", "error");
+            error.put("message", "Heap dump file not found.");
+            error.put("path", heapDumpFile.getAbsolutePath());
+            return error;
+        }
 
         return heapParserService.parseHeapDump(heapDumpFile);
     }

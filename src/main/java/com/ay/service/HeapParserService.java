@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,9 +16,28 @@ public class HeapParserService {
 
         Map<String, Object> result = new HashMap<>();
 
+        // Validate heap dump file
+        if (heapDumpFile == null) {
+            result.put("status", "error");
+            result.put("message", "Heap dump file is null!");
+            return result;
+        }
+
         if (!heapDumpFile.exists()) {
             result.put("status", "error");
             result.put("message", "Heap dump file not found!");
+            return result;
+        }
+
+        if (!heapDumpFile.isFile()) {
+            result.put("status", "error");
+            result.put("message", "The specified path is not a valid file.");
+            return result;
+        }
+
+        if (!heapDumpFile.canRead()) {
+            result.put("status", "error");
+            result.put("message", "Heap dump file cannot be read.");
             return result;
         }
 
@@ -26,9 +46,24 @@ public class HeapParserService {
 
         try {
 
-            parser.parse(heapDumpFile);
+        	handler.startAnalysis();
+
+        	parser.parse(heapDumpFile);
+
+        	handler.endAnalysis();
 
             result.put("status", "success");
+
+            // Heap dump metadata
+            result.put("fileName", heapDumpFile.getName());
+            result.put("fileSize", heapDumpFile.length());
+            result.put("parsedAt", LocalDateTime.now().toString());
+            
+            result.put("analysisTimeMs", handler.getAnalysisTime());
+            result.put("analysisCompleted", true);
+            result.put("totalObjectsProcessed", handler.getTotalObjectsProcessed());
+
+            // Heap statistics
             result.put("classes", handler.getClassCount());
             result.put("instances", handler.getInstanceCount());
 
@@ -59,10 +94,20 @@ public class HeapParserService {
                     )
             );
 
+            // Object reference edges (source -> target), needed for graph visualization
+            result.put(
+                    "edges",
+                    handler.getEdges().subList(
+                            0,
+                            Math.min(50, handler.getEdges().size())
+                    )
+            );
+
         } catch (IOException e) {
 
             result.put("status", "error");
-            result.put("message", e.getMessage());
+            result.put("message", "Failed to parse heap dump.");
+            result.put("error", e.getMessage());
 
         }
 
