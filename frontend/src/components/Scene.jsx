@@ -1,39 +1,29 @@
-import { connectWebSocket } from "../services/websocket";
+import React, { useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
-import { useState, useEffect } from "react";
-import api from "../services/api";
+import { OrbitControls, Line } from "@react-three/drei";
 
-function GraphNodes({ graphData }) {
-  if (!graphData || !graphData.classDetails) {
-    return null;
-  }
+function GraphNodes({ graphData, nodePositions }) {
+  if (!graphData) return null;
+
+  const radius = 4;
 
   return (
     <>
-      {graphData.classDetails.slice(0, 10).map((node, index) => {
-        const angle = (index / 10) * Math.PI * 2;
-        const radius = 3;
+      {graphData.nodes.map((node, index) => {
+        const angle = (index / graphData.nodes.length) * Math.PI * 2;
+
+        const position = [
+          Math.cos(angle) * radius,
+          Math.sin(angle) * radius,
+          0,
+        ];
+
+        nodePositions.current[node.id] = position;
 
         return (
-          <mesh
-            key={node.classId}
-            position={[
-              Math.cos(angle) * radius,
-              Math.sin(angle) * radius,
-              0,
-            ]}
-          >
-            <sphereGeometry args={[0.35, 32, 32]} />
-
-            <meshStandardMaterial
-              color={
-                graphData.liveMetrics &&
-                graphData.liveMetrics.heap.used > 100
-                  ? "red"
-                  : "cyan"
-              }
-            />
+          <mesh key={node.id} position={position}>
+            <sphereGeometry args={[0.18, 16, 16]} />
+            <meshStandardMaterial color="cyan" />
           </mesh>
         );
       })}
@@ -41,66 +31,82 @@ function GraphNodes({ graphData }) {
   );
 }
 
-// Week 3: Edges will be added later
-function GraphEdges() {
-  return null;
+function GraphEdges({ graphData, nodePositions }) {
+  if (!graphData) return null;
+
+  return (
+    <>
+      {graphData.edges.map((edge, index) => {
+        const start = nodePositions.current[edge.source];
+        const end = nodePositions.current[edge.target];
+
+        if (!start || !end) return null;
+
+        return (
+          <Line
+            key={index}
+            points={[start, end]}
+            color="white"
+            lineWidth={1}
+          />
+        );
+      })}
+    </>
+  );
 }
 
 export default function Scene() {
   const [graphData, setGraphData] = useState(null);
+  const nodePositions = useRef({});
 
   useEffect(() => {
-    // Load heap dump graph
-    api
-      .get("/parser/parse")
-      .then((response) => {
-        setGraphData(response.data);
+    fetch("http://localhost:8080/api/parser/parse")
+      .then((res) => res.json())
+      .then((data) => {
+
+        // Take only first 150 edges
+        const limitedEdges = data.edges.slice(0, 150);
+
+        // Build node list from those edges
+        const nodeMap = new Map();
+
+        limitedEdges.forEach((edge) => {
+          nodeMap.set(edge.source, {
+            id: edge.source,
+          });
+
+          nodeMap.set(edge.target, {
+            id: edge.target,
+          });
+        });
+
+        const limitedNodes = Array.from(nodeMap.values());
+
+        console.log("Nodes:", limitedNodes.length);
+        console.log("Edges:", limitedEdges.length);
+
+        setGraphData({
+          nodes: limitedNodes,
+          edges: limitedEdges,
+        });
       })
-      .catch((error) => {
-        console.error("Parser API Error:", error);
-      });
-
-    // Connect WebSocket
-    const client = connectWebSocket((liveData) => {
-      console.log("Live Metrics:", liveData);
-
-      setGraphData((prev) => {
-        if (!prev) return prev;
-
-        return {
-          ...prev,
-          liveMetrics: liveData,
-        };
-      });
-    });
-
-    return () => {
-      client.deactivate();
-    };
+      .catch((err) => console.error(err));
   }, []);
 
   return (
-    <Canvas
-      camera={{
-        position: [0, 0, 8],
-        fov: 50,
-      }}
-      style={{
-        width: "100%",
-        height: "100%",
-        background: "#20232a",
-      }}
-    >
-      {/* Lights */}
-      <ambientLight intensity={0.8} />
-      <directionalLight position={[5, 5, 5]} intensity={1.5} />
-      <directionalLight position={[-5, -5, -5]} intensity={0.5} />
+    <Canvas camera={{ position: [0, 0, 10], fov: 60 }}>
+      <ambientLight intensity={1} />
+      <pointLight position={[10, 10, 10]} intensity={2} />
 
-      {/* Heap Graph */}
-      <GraphNodes graphData={graphData} />
+      <GraphNodes
+        graphData={graphData}
+        nodePositions={nodePositions}
+      />
 
-      {/* Week 3 - Enable after implementing edges */}
-      {/* <GraphEdges graphData={graphData} /> */}
+      <GraphEdges
+        graphData={graphData}
+        nodePositions={nodePositions}
+      />
 
       <OrbitControls />
     </Canvas>

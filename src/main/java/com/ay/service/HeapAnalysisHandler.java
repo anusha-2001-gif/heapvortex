@@ -17,34 +17,35 @@ public class HeapAnalysisHandler extends NullRecordHandler {
     private int instanceCount = 0;
 
     private List<Long> classIds = new ArrayList<>();
-
     private List<Map<String, Object>> classDetails = new ArrayList<>();
+
+    // Object Nodes
+    private List<Map<String, Object>> objectNodes = new ArrayList<>();
+
+    // Object Reference Edges
+    private List<Map<String, Object>> edges = new ArrayList<>();
 
     // GC Roots
     private List<Long> gcRoots = new ArrayList<>();
+
     private long analysisStartTime;
     private long analysisEndTime;
 
-    // Edges: object reference relationships (source -> target)
-    private List<Map<String, Object>> edges = new ArrayList<>();
-
-    // Track instance-field definitions per class, needed to know which
-    // fields in an instance are object references vs primitive values.
     private Map<Long, InstanceField[]> classFieldTypes = new HashMap<>();
 
     @Override
     public void classDump(long classObjId,
-                          int stackTraceSerialNum,
-                          long superClassObjId,
-                          long classLoaderObjId,
-                          long signersObjId,
-                          long protectionDomainObjId,
-                          long reserved1,
-                          long reserved2,
-                          int instanceSize,
-                          Constant[] constants,
-                          Static[] statics,
-                          InstanceField[] instanceFields) {
+            int stackTraceSerialNum,
+            long superClassObjId,
+            long classLoaderObjId,
+            long signersObjId,
+            long protectionDomainObjId,
+            long reserved1,
+            long reserved2,
+            int instanceSize,
+            Constant[] constants,
+            Static[] statics,
+            InstanceField[] instanceFields) {
 
         classCount++;
 
@@ -58,32 +59,45 @@ public class HeapAnalysisHandler extends NullRecordHandler {
 
         classDetails.add(classInfo);
 
-        // Remember field layout of this class for later edge extraction
         classFieldTypes.put(classObjId, instanceFields);
     }
 
     @Override
     public void instanceDump(long objId,
-                             int stackTraceSerialNum,
-                             long classObjId,
-                             Value<?>[] instanceFieldValues) {
+            int stackTraceSerialNum,
+            long classObjId,
+            Value<?>[] instanceFieldValues) {
 
         instanceCount++;
+
+        // Store object node
+        Map<String, Object> node = new HashMap<>();
+        node.put("id", objId);
+        node.put("classId", classObjId);
+
+        objectNodes.add(node);
 
         InstanceField[] fields = classFieldTypes.get(classObjId);
 
         if (fields != null) {
-            int limit = Math.min(instanceFieldValues.length, fields.length);
-            for (int i = 0; i < limit; i++) {
-                Object val = instanceFieldValues[i].value;
 
-                // Object-reference fields are stored as Long object IDs.
-                if (val instanceof Long) {
-                    long referencedId = (Long) val;
-                    if (referencedId != 0) {
+            int limit = Math.min(fields.length, instanceFieldValues.length);
+
+            for (int i = 0; i < limit; i++) {
+
+                Object value = instanceFieldValues[i].value;
+
+                if (value instanceof Long) {
+
+                    long target = (Long) value;
+
+                    if (target != 0) {
+
                         Map<String, Object> edge = new HashMap<>();
+
                         edge.put("source", objId);
-                        edge.put("target", referencedId);
+                        edge.put("target", target);
+
                         edges.add(edge);
                     }
                 }
@@ -91,9 +105,7 @@ public class HeapAnalysisHandler extends NullRecordHandler {
         }
     }
 
-    // -------------------------
-    // GC Root Handling
-    // -------------------------
+    // ---------------- GC Roots ----------------
 
     private void recordRoot(long objId) {
         gcRoots.add(objId);
@@ -141,12 +153,13 @@ public class HeapAnalysisHandler extends NullRecordHandler {
 
     @Override
     public void rootThreadObj(long objId,
-                              int threadSerialNum,
-                              int stackTraceSerialNum) {
+            int threadSerialNum,
+            int stackTraceSerialNum) {
         recordRoot(objId);
     }
 
-    
+    // ---------------- Analysis ----------------
+
     public void startAnalysis() {
         analysisStartTime = System.currentTimeMillis();
     }
@@ -162,9 +175,8 @@ public class HeapAnalysisHandler extends NullRecordHandler {
     public int getTotalObjectsProcessed() {
         return classCount + instanceCount;
     }
-    // -------------------------
-    // Getters
-    // -------------------------
+
+    // ---------------- Getters ----------------
 
     public int getClassCount() {
         return classCount;
@@ -182,15 +194,19 @@ public class HeapAnalysisHandler extends NullRecordHandler {
         return classDetails;
     }
 
+    public List<Map<String, Object>> getObjectNodes() {
+        return objectNodes;
+    }
+
+    public List<Map<String, Object>> getEdges() {
+        return edges;
+    }
+
     public List<Long> getGcRoots() {
         return gcRoots;
     }
 
     public int getGcRootCount() {
         return gcRoots.size();
-    }
-
-    public List<Map<String, Object>> getEdges() {
-        return edges;
     }
 }

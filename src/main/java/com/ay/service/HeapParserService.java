@@ -46,11 +46,11 @@ public class HeapParserService {
 
         try {
 
-        	handler.startAnalysis();
+            handler.startAnalysis();
 
-        	parser.parse(heapDumpFile);
+            parser.parse(heapDumpFile);
 
-        	handler.endAnalysis();
+            handler.endAnalysis();
 
             result.put("status", "success");
 
@@ -58,7 +58,8 @@ public class HeapParserService {
             result.put("fileName", heapDumpFile.getName());
             result.put("fileSize", heapDumpFile.length());
             result.put("parsedAt", LocalDateTime.now().toString());
-            
+
+            // Analysis information
             result.put("analysisTimeMs", handler.getAnalysisTime());
             result.put("analysisCompleted", true);
             result.put("totalObjectsProcessed", handler.getTotalObjectsProcessed());
@@ -67,41 +68,34 @@ public class HeapParserService {
             result.put("classes", handler.getClassCount());
             result.put("instances", handler.getInstanceCount());
 
+            // Class IDs
             result.put(
                     "classIds",
                     handler.getClassIds().subList(
                             0,
-                            Math.min(10, handler.getClassIds().size())
-                    )
-            );
+                            Math.min(10, handler.getClassIds().size())));
 
+            // Class Details
             result.put(
                     "classDetails",
                     handler.getClassDetails().subList(
                             0,
-                            Math.min(10, handler.getClassDetails().size())
-                    )
-            );
+                            Math.min(10, handler.getClassDetails().size())));
 
-            // GC Root Information
+            // Object Nodes (NEW)
+            result.put("nodes", handler.getObjectNodes());
+
+            // GC Roots
             result.put("gcRoots", handler.getGcRootCount());
 
             result.put(
                     "rootObjects",
                     handler.getGcRoots().subList(
                             0,
-                            Math.min(10, handler.getGcRoots().size())
-                    )
-            );
+                            Math.min(10, handler.getGcRoots().size())));
 
-            // Object reference edges (source -> target), needed for graph visualization
-            result.put(
-                    "edges",
-                    handler.getEdges().subList(
-                            0,
-                            Math.min(50, handler.getEdges().size())
-                    )
-            );
+            // Object Reference Edges
+            result.put("edges", handler.getEdges());
 
         } catch (IOException e) {
 
