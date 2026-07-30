@@ -57,13 +57,11 @@
             <artifactId>jamm</artifactId>
             <version>0.4.0</version>
         </dependency>
-
-      <dependency>
-    <groupId>edu.tufts.eaftan</groupId>
-    <artifactId>hprof-parser</artifactId>
-    <version>1.0-SNAPSHOT</version>
-</dependency>
-
+        <dependency>
+            <groupId>edu.tufts.eaftan.hprofparser</groupId>
+            <artifactId>hprof-parser</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 
     <build>

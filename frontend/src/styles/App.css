@@ -82,11 +82,11 @@ body,
 /* Viewer */
 .viewer {
   flex: 1;
+  min-width: 0;
   height: 100%;
   overflow: hidden;
   background: #20232a;
 }
-
 /* Canvas */
 .viewer canvas {
   display: block;

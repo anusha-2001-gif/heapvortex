@@ -6,8 +6,12 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class HeapParserService {
@@ -46,11 +50,11 @@ public class HeapParserService {
 
         try {
 
-        	handler.startAnalysis();
+            handler.startAnalysis();
 
-        	parser.parse(heapDumpFile);
+            parser.parse(heapDumpFile);
 
-        	handler.endAnalysis();
+            handler.endAnalysis();
 
             result.put("status", "success");
 
@@ -58,7 +62,8 @@ public class HeapParserService {
             result.put("fileName", heapDumpFile.getName());
             result.put("fileSize", heapDumpFile.length());
             result.put("parsedAt", LocalDateTime.now().toString());
-            
+
+            // Analysis
             result.put("analysisTimeMs", handler.getAnalysisTime());
             result.put("analysisCompleted", true);
             result.put("totalObjectsProcessed", handler.getTotalObjectsProcessed());
@@ -71,17 +76,13 @@ public class HeapParserService {
                     "classIds",
                     handler.getClassIds().subList(
                             0,
-                            Math.min(10, handler.getClassIds().size())
-                    )
-            );
+                            Math.min(10, handler.getClassIds().size())));
 
             result.put(
                     "classDetails",
                     handler.getClassDetails().subList(
                             0,
-                            Math.min(10, handler.getClassDetails().size())
-                    )
-            );
+                            Math.min(10, handler.getClassDetails().size())));
 
             // GC Root Information
             result.put("gcRoots", handler.getGcRootCount());
@@ -90,18 +91,42 @@ public class HeapParserService {
                     "rootObjects",
                     handler.getGcRoots().subList(
                             0,
-                            Math.min(10, handler.getGcRoots().size())
-                    )
-            );
+                            Math.min(10, handler.getGcRoots().size())));
 
-            // Object reference edges (source -> target), needed for graph visualization
-            result.put(
-                    "edges",
-                    handler.getEdges().subList(
-                            0,
-                            Math.min(50, handler.getEdges().size())
-                    )
-            );
+            // ---------------------------
+            // Build Optimized Graph
+            // ---------------------------
+
+            int MAX_EDGES = 500;
+
+            List<Map<String, Object>> limitedEdges = handler.getEdges().subList(
+                    0,
+                    Math.min(MAX_EDGES, handler.getEdges().size()));
+
+            Set<Long> requiredNodeIds = new HashSet<>();
+
+            for (Map<String, Object> edge : limitedEdges) {
+
+                requiredNodeIds.add((Long) edge.get("source"));
+                requiredNodeIds.add((Long) edge.get("target"));
+
+            }
+
+            List<Map<String, Object>> limitedNodes = new ArrayList<>();
+
+            for (Map<String, Object> node : handler.getObjectNodes()) {
+
+                Long id = (Long) node.get("id");
+
+                if (requiredNodeIds.contains(id)) {
+                    limitedNodes.add(node);
+                }
+
+            }
+
+            result.put("nodes", limitedNodes);
+            result.put("links", limitedEdges);
+            result.put("edges", limitedEdges);
 
         } catch (IOException e) {
 
