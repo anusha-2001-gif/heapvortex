@@ -1,21 +1,24 @@
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import Scene from "./components/Scene";
+import JmxMemory from "./components/JmxMemory";
 import "./styles/App.css";
 
 function App() {
   return (
     <>
-      <Navbar />
+  <Navbar />
 
-      <div className="container">
-        <Sidebar />
+  <div className="container">
+    <Sidebar />
 
-        <div className="viewer">
-          <Scene />
-        </div>
-      </div>
-    </>
+    <div className="viewer">
+      <Scene />
+    </div>
+
+    <JmxMemory />
+  </div>
+</>
   );
 }
 

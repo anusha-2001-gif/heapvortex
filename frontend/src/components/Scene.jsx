@@ -1,114 +1,183 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Line } from "@react-three/drei";
-
-function GraphNodes({ graphData, nodePositions }) {
-  if (!graphData) return null;
-
-  const radius = 4;
-
-  return (
-    <>
-      {graphData.nodes.map((node, index) => {
-        const angle = (index / graphData.nodes.length) * Math.PI * 2;
-
-        const position = [
-          Math.cos(angle) * radius,
-          Math.sin(angle) * radius,
-          0,
-        ];
-
-        nodePositions.current[node.id] = position;
-
-        return (
-          <mesh key={node.id} position={position}>
-            <sphereGeometry args={[0.18, 16, 16]} />
-            <meshStandardMaterial color="cyan" />
-          </mesh>
-        );
-      })}
-    </>
-  );
-}
-
-function GraphEdges({ graphData, nodePositions }) {
-  if (!graphData) return null;
-
-  return (
-    <>
-      {graphData.edges.map((edge, index) => {
-        const start = nodePositions.current[edge.source];
-        const end = nodePositions.current[edge.target];
-
-        if (!start || !end) return null;
-
-        return (
-          <Line
-            key={index}
-            points={[start, end]}
-            color="white"
-            lineWidth={1}
-          />
-        );
-      })}
-    </>
-  );
-}
+import ForceGraph3D from "react-force-graph-3d";
 
 export default function Scene() {
-  const [graphData, setGraphData] = useState(null);
-  const nodePositions = useRef({});
+  const graphRef = useRef();
+  const containerRef = useRef();
 
+  const [graphData, setGraphData] = useState({
+    nodes: [],
+    links: [],
+  });
+
+  const [selectedNode, setSelectedNode] = useState(null);
+
+  const [size, setSize] = useState({
+    width: 800,
+    height: 600,
+  });
+
+  // -----------------------------
+  // Resize graph with container
+  // -----------------------------
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        setSize({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
+        });
+      }
+    };
+
+    updateSize();
+
+    window.addEventListener("resize", updateSize);
+
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
+
+  // -----------------------------
+  // Load graph
+  // -----------------------------
   useEffect(() => {
     fetch("http://localhost:8080/api/parser/parse")
       .then((res) => res.json())
       .then((data) => {
-
-        // Take only first 150 edges
-        const limitedEdges = data.edges.slice(0, 150);
-
-        // Build node list from those edges
         const nodeMap = new Map();
 
-        limitedEdges.forEach((edge) => {
-          nodeMap.set(edge.source, {
-            id: edge.source,
-          });
-
-          nodeMap.set(edge.target, {
-            id: edge.target,
-          });
+        (data.nodes || []).forEach((node) => {
+          nodeMap.set(node.id, node);
         });
 
-        const limitedNodes = Array.from(nodeMap.values());
+        (data.links || []).forEach((link) => {
+          if (!nodeMap.has(link.source)) {
+            nodeMap.set(link.source, {
+              id: link.source,
+              classId: "Unknown",
+            });
+          }
 
-        console.log("Nodes:", limitedNodes.length);
-        console.log("Edges:", limitedEdges.length);
-
-        setGraphData({
-          nodes: limitedNodes,
-          edges: limitedEdges,
+          if (!nodeMap.has(link.target)) {
+            nodeMap.set(link.target, {
+              id: link.target,
+              classId: "Unknown",
+            });
+          }
         });
+
+        const graph = {
+          nodes: Array.from(nodeMap.values()),
+          links: data.links || [],
+        };
+
+        setGraphData(graph);
+
+        setTimeout(() => {
+          if (graphRef.current) {
+            graphRef.current.zoomToFit(800, 50);
+          }
+        }, 500);
       })
-      .catch((err) => console.error(err));
+      .catch(console.error);
   }, []);
 
+  // -----------------------------
+  // Force settings
+  // -----------------------------
+  useEffect(() => {
+    if (!graphRef.current) return;
+
+    graphRef.current.d3Force("charge").strength(-40);
+
+    graphRef.current.d3Force("link").distance(18);
+
+    graphRef.current.d3Force("center").strength(0.8);
+  }, [graphData]);
+
   return (
-    <Canvas camera={{ position: [0, 0, 10], fov: 60 }}>
-      <ambientLight intensity={1} />
-      <pointLight position={[10, 10, 10]} intensity={2} />
-
-      <GraphNodes
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height: "100%",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      <ForceGraph3D
+        ref={graphRef}
+        width={size.width}
+        height={size.height}
         graphData={graphData}
-        nodePositions={nodePositions}
+        backgroundColor="#1f232b"
+        nodeRelSize={4}
+        nodeColor={() => "#00e5ff"}
+        linkColor={() => "rgba(255,255,255,0.25)"}
+        linkWidth={0.5}
+        cooldownTicks={100}
+        nodeLabel={(node) => `
+Object ID : ${node.id}
+Class ID  : ${node.classId}
+`}
+        onNodeClick={(node) => {
+          setSelectedNode(node);
+
+          graphRef.current.cameraPosition(
+            {
+              x: node.x * 1.5,
+              y: node.y * 1.5,
+              z: node.z * 1.5,
+            },
+            node,
+            1200
+          );
+        }}
       />
 
-      <GraphEdges
-        graphData={graphData}
-        nodePositions={nodePositions}
-      />
+      {selectedNode && (
+        <div
+          style={{
+            position: "absolute",
+            left: 20,
+            bottom: 20,
+            width: 260,
+            background: "white",
+            color: "black",
+            padding: 15,
+            borderRadius: 8,
+            boxShadow: "0 3px 10px rgba(0,0,0,.3)",
+          }}
+        >
+          <h3>Selected Object</h3>
 
-      <OrbitControls />
-    </Canvas>
+          <hr />
+
+          <p>
+            <b>Object ID</b>
+          </p>
+
+          <p>{selectedNode.id}</p>
+
+          <p>
+            <b>Class ID</b>
+          </p>
+
+          <p>{selectedNode.classId}</p>
+
+          <button
+            onClick={() => setSelectedNode(null)}
+            style={{
+              width: "100%",
+              marginTop: 10,
+              padding: 8,
+              cursor: "pointer",
+            }}
+          >
+            Close
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

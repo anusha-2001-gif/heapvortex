@@ -6,8 +6,12 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class HeapParserService {
@@ -59,7 +63,7 @@ public class HeapParserService {
             result.put("fileSize", heapDumpFile.length());
             result.put("parsedAt", LocalDateTime.now().toString());
 
-            // Analysis information
+            // Analysis
             result.put("analysisTimeMs", handler.getAnalysisTime());
             result.put("analysisCompleted", true);
             result.put("totalObjectsProcessed", handler.getTotalObjectsProcessed());
@@ -68,24 +72,19 @@ public class HeapParserService {
             result.put("classes", handler.getClassCount());
             result.put("instances", handler.getInstanceCount());
 
-            // Class IDs
             result.put(
                     "classIds",
                     handler.getClassIds().subList(
                             0,
                             Math.min(10, handler.getClassIds().size())));
 
-            // Class Details
             result.put(
                     "classDetails",
                     handler.getClassDetails().subList(
                             0,
                             Math.min(10, handler.getClassDetails().size())));
 
-            // Object Nodes (NEW)
-            result.put("nodes", handler.getObjectNodes());
-
-            // GC Roots
+            // GC Root Information
             result.put("gcRoots", handler.getGcRootCount());
 
             result.put(
@@ -94,8 +93,40 @@ public class HeapParserService {
                             0,
                             Math.min(10, handler.getGcRoots().size())));
 
-            // Object Reference Edges
-            result.put("edges", handler.getEdges());
+            // ---------------------------
+            // Build Optimized Graph
+            // ---------------------------
+
+            int MAX_EDGES = 500;
+
+            List<Map<String, Object>> limitedEdges = handler.getEdges().subList(
+                    0,
+                    Math.min(MAX_EDGES, handler.getEdges().size()));
+
+            Set<Long> requiredNodeIds = new HashSet<>();
+
+            for (Map<String, Object> edge : limitedEdges) {
+
+                requiredNodeIds.add((Long) edge.get("source"));
+                requiredNodeIds.add((Long) edge.get("target"));
+
+            }
+
+            List<Map<String, Object>> limitedNodes = new ArrayList<>();
+
+            for (Map<String, Object> node : handler.getObjectNodes()) {
+
+                Long id = (Long) node.get("id");
+
+                if (requiredNodeIds.contains(id)) {
+                    limitedNodes.add(node);
+                }
+
+            }
+
+            result.put("nodes", limitedNodes);
+            result.put("links", limitedEdges);
+            result.put("edges", limitedEdges);
 
         } catch (IOException e) {
 
