@@ -98,11 +98,6 @@ function Sidebar() {
         <p>{gc}</p>
       </div>
 
-      <div className="metric">
-        <strong>CPU Usage</strong>
-        <p>{cpu}</p>
-      </div>
-
     </div>
 
   );
