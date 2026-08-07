@@ -26,8 +26,9 @@ public class HeapParserController {
     @GetMapping("/parse")
     public Map<String, Object> parseHeapDump() {
 
-        File heapDumpFile = new File("heapdumps/heapdump_20260720_105215.hprof");
-
+     
+        File heapDumpFile = new File("heapdumps/heapdump_20260718_121504.hprof");
+        
         if (!heapDumpFile.exists()) {
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
@@ -36,6 +37,14 @@ public class HeapParserController {
             return error;
         }
 
+        if (heapDumpFile.length() == 0) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("status", "error");
+            error.put("message", "Heap dump file is empty.");
+            return error;
+        }
+        
+        
         return heapParserService.parseHeapDump(heapDumpFile);
     }
 }
